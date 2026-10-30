@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tableadd</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; the table itself is the hero, in a full-width scroller, styled like a
+   1996 <table border="1"> because the point is that the oldest, plainest HTML element does the work. */
+:root {
+  --paper: #f5f6f8;        /* page */
+  --sheet: #ffffff;        /* panels */
+  --ink: #1a2130;
+  --muted: #5a6376;
+  --rule: #d5d9e1;
+  --bevel-hi: #ffffff;     /* old-table bevel */
+  --bevel-lo: #8e95a3;
+  --a: #2f5fd0;            /* bit of a */
+  --b: #1d8a4b;            /* bit of b */
+  --c: #7a45c9;            /* carry in */
+  --on: #e8590c;           /* a cell with rowspan 1: this reader's answer is yes */
+  --off: #27324a;          /* a cell with rowspan 999: covers its column to the end */
+  --idle: #e8ebf1;         /* a column waiting for its row */
+  --reader: #dfe3ec;
+  --sumcol: #f8dcc8;
+  --ring: #e8590c;
+  --ok: #1d8a4b;
+  --bad: #c42b2b;
+  --on-ink: #ffffff;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f131b; --sheet: #161c27; --ink: #e5e9f1; --muted: #9aa3b4; --rule: #2a3242;
+    --bevel-hi: #3a4457; --bevel-lo: #07090d;
+    --a: #6f97ff; --b: #47c27c; --c: #b18cff; --on: #ff7a36; --off: #2c3852; --idle: #1d2431;
+    --reader: #252e3e; --sumcol: #4a3121; --ring: #ff8a4c; --ok: #47c27c; --bad: #ff6b6b; --on-ink: #1a1208;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f131b; --sheet: #161c27; --ink: #e5e9f1; --muted: #9aa3b4; --rule: #2a3242;
+  --bevel-hi: #3a4457; --bevel-lo: #07090d;
+  --a: #6f97ff; --b: #47c27c; --c: #b18cff; --on: #ff7a36; --off: #2c3852; --idle: #1d2431;
+  --reader: #252e3e; --sumcol: #4a3121; --ring: #ff8a4c; --ok: #47c27c; --bad: #ff6b6b; --on-ink: #1a1208;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 40px; }
+.prose { max-width: 66ch; display: grid; gap: 14px; }
+h1 { font: 700 clamp(2.4rem, 6vw, 3.6rem)/1 var(--display); letter-spacing: -0.01em; margin: 0; }
+h2 { font: 600 1.45rem/1.2 var(--display); margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { font-size: 1.2rem; line-height: 1.5; max-width: 58ch; text-wrap: pretty; }
+.muted { color: var(--muted); }
+code, kbd { font: 0.92em var(--mono); }
+header { display: grid; gap: 14px; }
+
+/* controls */
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; display: grid; gap: 18px;
+         padding: 20px clamp(14px, 2.5vw, 24px); min-width: 0; }
+form { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+label.field { display: grid; gap: 4px; font: 600 0.78rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+input[type=number] { font: 600 1.25rem/1 var(--mono); width: 7.5ch; padding: 8px 10px; border-radius: 4px;
+                     border: 1px solid var(--rule); background: var(--paper); color: var(--ink); }
+input[type=number]:focus-visible, select:focus-visible, button:focus-visible, input[type=checkbox]:focus-visible, summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+#a { border-color: var(--a); } #b { border-color: var(--b); }
+select { font: 600 1rem/1 var(--mono); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); }
+.check { display: flex; gap: 8px; align-items: center; font: 600 0.78rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-bottom: 10px; }
+.plus { font: 600 1.4rem/1 var(--mono); color: var(--muted); padding-bottom: 8px; }
+
+/* readout */
+.readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; font-variant-numeric: tabular-nums; }
+.readout .eq { font: 600 clamp(1.4rem, 3.5vw, 2rem)/1.1 var(--mono); }
+.readout .bin { font: 400 1rem/1.2 var(--mono); color: var(--muted); }
+.chip { font: 600 0.78rem/1 var(--mono); padding: 5px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.chip.ok { color: var(--ok); } .chip.bad { color: var(--bad); }
+
+/* the table, styled like <table border="1"> */
+.scroller { overflow-x: auto; padding: 4px 2px 10px; }
+table.adder { border-collapse: separate; border-spacing: 2px; background: var(--sheet);
+              border: 2px solid; border-color: var(--bevel-hi) var(--bevel-lo) var(--bevel-lo) var(--bevel-hi); }
+table.adder td, table.adder th { width: 13px; min-width: 13px; max-width: 13px; padding: 0; text-align: center; }
+table.adder td { height: 22px; border: 1px solid; border-color: var(--bevel-lo) var(--bevel-hi) var(--bevel-hi) var(--bevel-lo);
+                 font: 600 10px/1 var(--mono); }
+table.adder th { font: 600 9px/1 var(--mono); color: var(--muted); height: 16px; vertical-align: bottom; white-space: nowrap; overflow: visible; }
+table.adder th.s { color: var(--on); }
+td.in-a { background: var(--a); color: var(--on-ink); }
+td.in-b { background: var(--b); color: var(--on-ink); }
+td.in-c { background: var(--c); color: var(--on-ink); }
+td.idle { background: var(--idle); }
+td.rd { background: var(--reader); }
+td.rd.sum { background: var(--sumcol); }
+td.on { background: var(--on); }
+td.off { background: var(--off); }
+td.ans { box-shadow: inset 0 0 0 2px var(--sheet), 0 0 0 2px var(--ink); position: relative; z-index: 1; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.86rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 13px; height: 13px; border-radius: 2px; display: inline-block; }
+
+/* explanation */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 28px 40px; align-items: start; }
+.cols > * { min-width: 0; }
+table.facts { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+table.facts th, table.facts td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.facts th { font: 600 0.74rem/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+table.facts td:first-child { font-family: var(--mono); white-space: nowrap; }
+pre { margin: 0; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px;
+      overflow-x: auto; font: 0.84rem/1.55 var(--mono); }
+pre .k { color: var(--on); font-weight: 600; }
+details { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; min-width: 0; }
+details summary { cursor: pointer; font-weight: 600; }
+details pre { margin-top: 10px; border: 0; padding: 0; max-height: 320px; background: none; white-space: pre; }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
+@media (prefers-reduced-motion: no-preference) { td.on, td.ans { transition: box-shadow .2s; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="prose">
+    <h1>tableadd</h1>
+    <p class="lede">After the first row, every row of this table is the same line of HTML. While laying the table out, your browser adds the two numbers in the first row.</p>
+  </header>
+
+  <section class="panel" aria-label="The adder">
+    <form id="form" autocomplete="off">
+      <label class="field" for="a">a<input id="a" type="number" min="0" value="173"></label>
+      <span class="plus" aria-hidden="true">+</span>
+      <label class="field" for="b">b<input id="b" type="number" min="0" value="85"></label>
+      <label class="check" for="cin"><input id="cin" type="checkbox"> carry in</label>
+      <label class="field" for="bits">bits
+        <select id="bits"><option value="4">4</option><option value="8" selected>8</option><option value="12">12</option></select>
+      </label>
+    </form>
+    <div class="readout" aria-live="polite">
+      <span class="eq" id="eq">173 + 85 = 258</span>
+      <span class="bin" id="bin"></span>
+      <span class="chip ok" id="verdict">read from the layout</span>
+    </div>
+    <div class="scroller" id="scroller"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--a)"></i>a: the rail that wakes (1 or 0)</span>
+      <span><i class="sw" style="background:var(--b)"></i>b: the rail that wakes</span>
+      <span><i class="sw" style="background:var(--reader)"></i>reader, waiting for its row</span>
+      <span><i class="sw" style="background:var(--on)"></i>cell with rowspan 1: yes</span>
+      <span><i class="sw" style="background:var(--off)"></i>cell with rowspan 999: no, covers the column to the end</span>
+    </div>
+    <p class="muted" style="max-width:76ch">Full adder <i>i</i> works in row <i>i</i>&nbsp;+&nbsp;1. In that row the cell in column <b style="color:var(--on)">s<i>i</i></b> is orange when sum bit <i>i</i> is 1 and dark when it is 0; the ringed cells are the answer, with the final carry under <b>c</b>. The page's script only writes the first row and reads the result back by measuring where cells landed; the arithmetic happens in layout.</p>
+  </section>
+
+  <section class="cols">
+    <div class="prose">
+      <h2>What the browser does</h2>
+      <p>Each row places its cells from left to right, each in the first slot that no taller cell from an earlier row still covers. That rule is the HTML standard's table forming algorithm, and it is all this table uses: every cell is one column wide, so cells never overlap and there is nothing for engines to disagree on.</p>
+      <p>In each row a free column learns exactly one number: how many free columns lie to its left, because that decides which of the row's cells lands on it. The repeated row is therefore a lookup table from that count to a rowspan.</p>
+    </div>
+    <div class="prose">
+      <h2>The repeated row</h2>
+      <pre>&lt;tr&gt;
+  &lt;td rowspan="999"&gt;&lt;/td&gt; &lt;td rowspan="999"&gt;&lt;/td&gt; &lt;td rowspan="999"&gt;&lt;/td&gt;
+  &lt;td rowspan="<span class="k">1</span>"&gt;&lt;/td&gt;   &lt;td rowspan="999"&gt;&lt;/td&gt; &lt;td rowspan="<span class="k">1</span>"&gt;&lt;/td&gt;
+  &lt;td rowspan="999"&gt;&lt;/td&gt; &lt;td rowspan="999"&gt;&lt;/td&gt; &lt;td rowspan="999"&gt;&lt;/td&gt;
+  &lt;td rowspan="999"&gt;&lt;/td&gt;
+&lt;/tr&gt;</pre>
+      <p class="muted">Ten cells. A column that is free with 3 or 5 free columns to its left gets a cell one row tall and is free again in the next row. Every other free column gets a cell that covers it to the bottom; browsers clamp the 999.</p>
+    </div>
+  </section>
+
+  <section class="cols">
+    <div class="prose">
+      <h2>One full adder, six columns</h2>
+      <p>A bit is a pair of columns. In the row where it is read, exactly one of the two is free: the left one for 1, the right one for 0. Everything outside the pair counts it as one free column either way. Only columns between the two count the bit itself.</p>
+      <p>Six reader columns sit inside the pairs for <i>a</i>, <i>b</i> and the carry, so each counts <i>s</i>&nbsp;=&nbsp;<i>a</i>&nbsp;+&nbsp;<i>b</i>&nbsp;+&nbsp;carry plus its own position, and the repeated row answers for it.</p>
+      <p>The next full adder sits between R2 and R3. In its row it counts the free columns to its left, and of those only R1 and R2 can vary: together they are the carry. The nesting is the wiring.</p>
+    </div>
+    <table class="facts">
+      <thead><tr><th>Reader</th><th>Free again in the next row when</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>R1</td><td><i>s</i> = 3</td><td rowspan="2">carry (one of the two)</td></tr>
+        <tr><td>R2</td><td><i>s</i> = 2</td></tr>
+        <tr><td>R3</td><td><i>s</i> odd</td><td>sum bit</td></tr>
+        <tr><td>R4</td><td><i>s</i> even</td><td>not sum</td></tr>
+        <tr><td>R5</td><td><i>s</i> = 1</td><td rowspan="2">no carry (keeps the block neutral to its right)</td></tr>
+        <tr><td>R6</td><td><i>s</i> = 0</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="cols">
+    <div class="prose">
+      <h2>Where it works</h2>
+      <p>Four engines lay out all 512 four-bit tables (with and without carry in), 200 random eight-bit tables and 60 random twelve-bit tables with every cell in exactly the slot the specification gives it:</p>
+      <ul class="plain">
+        <li><b>Chromium 141</b>: Blink, the engine in Chrome and Edge</li>
+        <li><b>WebKitGTK 2.52</b>: WebKit, the engine Safari is built on</li>
+        <li><b>wkhtmltopdf 0.12.6</b>: a WebKit from 2016</li>
+        <li><b>WeasyPrint 70</b>: a table layout written in Python</li>
+      </ul>
+      <p class="muted">Firefox is not checked yet. The readout above is measured in your browser, so opening this page checks whichever engine you use.</p>
+    </div>
+    <div class="prose">
+      <h2>What identical rows can and can't do</h2>
+      <ul class="plain">
+        <li><b>Alone, they settle.</b> When the repeated row is itself a short pattern (two to five cells over and over, rowspans one to four), every such row turns a random first row into a layout that repeats every 12 rows or fewer. Information only travels rightward, so disturbances drift off the edge.</li>
+        <li><b>Two natural counters are impossible.</b> If a cell's free count is a multiple of the row's period, every position of the count looks the same to it. And cells that wake in turn can only push their state one way.</li>
+        <li><b>Scans work.</b> A reader has to sit inside the pairs it reads, so information flows inward, from the outside of the nest to its middle. That suits a chain like this adder, which reads the bits in order and passes on a carry. Comparison or subtraction should fit the same way, but only the adder is built. General circuits, where one result feeds two places, and unbounded computation from identical rows are still open.</li>
+      </ul>
+    </div>
+  </section>
+
+  <details>
+    <summary>This table's HTML</summary>
+    <pre id="src"></pre>
+  </details>
+</main>
+
+<script>
+const H = 999;
+const PROGRAM = [H, H, H, 1, H, 1, H, H, H, H];
+
+/* Same layout as tableadd/adder.py: [name, first-row rowspan, class, header label] per column. */
+function columns(a, b, cin) {
+  const n = a.length;
+  function fa(i) {
+    const w = i + 1;
+    let cols = [
+      ["a" + i, a[i] ? w : H, a[i] ? "in-a" : "idle", "a" + i, a[i] ? "1" : ""],
+      ["b" + i, b[i] ? w : H, b[i] ? "in-b" : "idle", "b" + i, b[i] ? "1" : ""],
+      ["c3_" + i, w, "rd", i === n - 1 ? "c" + n : "", ""], ["c2_" + i, w, "rd", i === n - 1 ? null : "", ""],
+    ];
+    if (i + 1 < n) cols = cols.concat(fa(i + 1));
+    return cols.concat([
+      ["s" + i, w, "rd sum", "s" + i, ""], ["sn" + i, w, "rd", "", ""],
+      ["n1_" + i, w, "rd", "", ""], ["n0_" + i, w, "rd", "", ""],
+      ["bn" + i, b[i] ? H : w, b[i] ? "idle" : "in-b", "", b[i] ? "" : "0"],
+      ["an" + i, a[i] ? H : w, a[i] ? "idle" : "in-a", "", a[i] ? "" : "0"],
+    ]);
+  }
+  return [["cin", cin ? 1 : H, cin ? "in-c" : "idle", "c", cin ? "1" : ""]]
+    .concat(fa(0))
+    .concat([["cinn", cin ? H : 1, cin ? "idle" : "in-c", "", cin ? "" : "0"], ["spare", 1, "idle", "", ""]]);
+}
+
+/* The header is its own row group, so the carry-out label can span both carry readers without touching the body. */
+function tableHTML(cols, n) {
+  const head = "<thead><tr>" + cols.map((c, k) => c[3] === null ? "" :
+    `<th class="${c[3].startsWith("s") ? "s" : ""}"${cols[k + 1] && cols[k + 1][3] === null ? ' colspan="2"' : ""}>${c[3]}</th>`).join("") + "</tr></thead>";
+  const first = "<tr>" + cols.map(c => `<td rowspan="${c[1]}" class="${c[2]}">${c[4]}</td>`).join("") + "</tr>";
+  const prog = "<tr>" + PROGRAM.map(h => `<td rowspan="${h}" class="${h === 1 ? "on" : "off"}"></td>`).join("") + "</tr>";
+  return `<table class="adder">${head}<tbody>${first}${prog.repeat(n)}</tbody></table>`;
+}
+
+function plainHTML(cols, n) {
+  const first = "<tr>" + cols.map(c => `<td rowspan="${c[1]}"></td>`).join("") + "</tr>";
+  const prog = "<tr>" + PROGRAM.map(h => `<td rowspan="${h}"></td>`).join("") + "</tr>";
+  return `<table>\n${first}\n` + (prog + "\n").repeat(n) + "</table>";
+}
+
+const $ = id => document.getElementById(id);
+function bitsOf(v, n) { return Array.from({ length: n }, (_, i) => (v >> i) & 1); }
+
+function render() {
+  const n = +$("bits").value, max = (1 << n) - 1;
+  for (const id of ["a", "b"]) {
+    $(id).max = max;
+    let v = Math.floor(+$(id).value || 0);
+    if (v < 0) v = 0;
+    if (v > max) v = max;
+    if (String(v) !== $(id).value) $(id).value = v;
+  }
+  const A = +$("a").value, B = +$("b").value, C = $("cin").checked ? 1 : 0;
+  const cols = columns(bitsOf(A, n), bitsOf(B, n), C);
+  $("scroller").innerHTML = tableHTML(cols, n);
+  $("src").textContent = plainHTML(cols, n);
+  requestAnimationFrame(() => readBack(cols, n, A, B, C));
+}
+
+/* Read the sum from where the browser put the cells: sum bit i is 1 when the cell that landed in column s<i>
+   in row i+1 has rowspan 1. Only measurement here; nothing feeds back into the table. */
+function readBack(cols, n, A, B, C) {
+  const tbody = $("scroller").querySelector("tbody");
+  const rows = tbody.rows;
+  const xs = Array.from(rows[0].cells, c => c.getBoundingClientRect().left);
+  const colOf = cell => {
+    const L = cell.getBoundingClientRect().left;
+    let best = 0, d = Infinity;
+    xs.forEach((x, i) => { const e = Math.abs(x - L); if (e < d) { d = e; best = i; } });
+    return best;
+  };
+  const index = Object.fromEntries(cols.map((c, i) => [c[0], i]));
+  const at = (r, name) => Array.from(rows[r].cells).find(cell => colOf(cell) === index[name]);
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const cell = at(i + 1, "s" + i);
+    if (cell) cell.classList.add("ans");
+    if (cell && cell.rowSpan === 1) sum += 1 << i;
+  }
+  const carryCells = [at(n, "c3_" + (n - 1)), at(n, "c2_" + (n - 1))].filter(Boolean);
+  const carry = carryCells.some(c => c.rowSpan === 1);
+  carryCells.forEach(c => c.rowSpan === 1 && c.classList.add("ans"));
+  if (carry) sum += 1 << n;
+  $("eq").textContent = `${A} + ${B}${C ? " + 1" : ""} = ${sum}`;
+  $("bin").textContent = sum.toString(2).padStart(n + 1, "0").replace(/(\d)(?=(\d{4})+$)/g, "$1 ");
+  const ok = sum === A + B + C;
+  $("verdict").className = "chip " + (ok ? "ok" : "bad");
+  $("verdict").textContent = ok ? "read from the layout, matches a + b" : "read from the layout, differs from a + b";
+}
+
+$("form").addEventListener("input", render);
+$("form").addEventListener("submit", e => e.preventDefault());
+render();
+</script>
+</body>
+</html>

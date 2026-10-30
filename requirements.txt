@@ -1,0 +1,3 @@
+playwright>=1.48   # tests and tools/picture.py: lays the tables out in Chromium
+weasyprint         # tests only: a second layout engine, written in Python
+pytest
