@@ -1,6 +1,8 @@
 """Lay the adder tables out in real engines and compare every cell's column with the specification.
 
   chromium    Blink, the engine in Chrome and Edge (via Playwright)
+  firefox     Gecko, in the Firefox app on macOS: a tab opens a page served from 127.0.0.1 and posts the layout back
+  safari      WebKit, in the Safari app on macOS, the same way
   webkitgtk   WebKit, the engine Safari is built on, in its Linux port (via webkitgtk_layout.py)
   weasyprint  WeasyPrint's own table layout, in Python (cells carry their grid column)
   qtwebkit    the 2016 WebKit inside wkhtmltopdf: a script in the page measures the cells, pdftotext reads them
@@ -66,6 +68,78 @@ def chromium(n=4, sample=None):
         version = br.version
         br.close()
     return f"Chromium {version}", len(batch_all), mism, wrong
+
+
+PAGE = """<!doctype html><html><head><meta charset="utf-8">%s<style>#box{width:40000px}</style></head><body>
+<p id="st">laying out...</p><div id="box"></div><script>
+const box = document.getElementById("box"), out = [];
+for (const html of %s) {
+  box.innerHTML = html;
+  out.push([...box.querySelectorAll("table")].map(t => { const L = t.getBoundingClientRect().left;
+    return [...t.rows].map(r => [...r.cells].map(c => Math.round((c.getBoundingClientRect().left - L) / %d))); }));
+}
+box.innerHTML = "";
+fetch("/", {method: "POST", body: JSON.stringify(out)})
+  .then(() => document.getElementById("st").textContent = "done, the layout was sent back; you can close this tab");
+</script></body></html>"""
+
+
+def desktop(app):
+    """A browser app installed on macOS. It opens a tab on a page served from 127.0.0.1, which lays the tables
+    out and posts back the column of every cell."""
+    def run(n=4, sample=None):
+        if sys.platform != "darwin" or not Path(f"/Applications/{app}.app").exists():
+            raise RuntimeError(f"needs {app} in /Applications (macOS)")
+        import json
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        batch_all = cases(n, sample)
+        batches = [batch_all[k:k + 64] for k in range(0, len(batch_all), 64)]
+        html = ["".join(table(x, y, n, c) for x, y, c in batch) for batch in batches]
+        body = (PAGE % (CSS, json.dumps(html), PITCH)).encode()
+        loaded, posted, got = threading.Event(), threading.Event(), []
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                if self.path != "/":                             # the favicon
+                    self.send_response(404); self.end_headers(); return
+                loaded.set()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                got[:] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                self.send_response(204); self.end_headers()
+                posted.set()
+
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{srv.server_address[1]}/"
+        try:
+            for _ in range(3):                                   # an app that is starting can drop the URL
+                subprocess.run(["open", "-a", app, url], check=True)
+                if loaded.wait(30):
+                    break
+            if not posted.wait(300):
+                raise RuntimeError(f"{app} sent no layout back")
+        finally:
+            srv.shutdown()
+        if len(got) != len(batches):
+            raise RuntimeError(f"{app} sent back {len(got)} of {len(batches)} batches")
+        mism = wrong = 0
+        for batch, layouts in zip(batches, got):
+            m, w = check(app.lower(), n, layouts, batch)
+            mism += m; wrong += w
+        version = subprocess.run(["defaults", "read", f"/Applications/{app}.app/Contents/Info.plist",
+                                  "CFBundleShortVersionString"], capture_output=True, text=True).stdout.strip()
+        return f"{app} {version}", len(batch_all), mism, wrong
+    return run
 
 
 def weasyprint_engine(n=4, sample=None):
@@ -165,7 +239,8 @@ def webkitgtk(n=4, sample=None):
     return f"WebKitGTK {version}", len(batch_all), mism, wrong
 
 
-ENGINES = {"chromium": chromium, "webkitgtk": webkitgtk, "weasyprint": weasyprint_engine, "qtwebkit": qtwebkit}
+ENGINES = {"chromium": chromium, "firefox": desktop("Firefox"), "safari": desktop("Safari"), "webkitgtk": webkitgtk,
+           "weasyprint": weasyprint_engine, "qtwebkit": qtwebkit}
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 4

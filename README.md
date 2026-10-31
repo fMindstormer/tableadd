@@ -92,17 +92,18 @@ the same construction in Python, with the forming algorithm in [`tableadd/table.
 | Engine | What it is | Result |
 |---|---|---|
 | Chromium 141 | Blink, the engine in Chrome and Edge | every cell in its slot |
+| Firefox 159 | Gecko, on macOS | every cell in its slot |
+| Safari 27.0.1 | WebKit, in Safari itself on macOS | every cell in its slot |
 | WebKitGTK 2.52.6 | WebKit, the engine Safari is built on, in its Linux port | every cell in its slot |
 | wkhtmltopdf 0.12.6 | a WebKit from 2016 (AppleWebKit/602.1) in an HTML-to-PDF tool | every cell in its slot |
 | WeasyPrint 70 | an HTML-to-PDF tool with its own layout engine, written in Python | every cell in its slot |
-| Firefox | Gecko | not checked yet |
 
 Each engine laid out all 512 four-bit tables (every *a* and *b*, with and without a carry in), 200 random
 eight-bit tables and 60 random twelve-bit tables. The check compares the column of every cell with the
 specification's algorithm, not just the answer, and then reads the sum from the engine's layout.
 
 The [demo page](docs/index.html) measures the layout in whichever browser opens it and says whether the sum
-it read matches *a* + *b*, so opening it in Firefox or Safari checks those.
+it read matches *a* + *b*, so opening it checks any other browser.
 
 ## What I found on the way
 
@@ -156,14 +157,15 @@ python tools/picture.py 11 6 4          # docs/example.png
 standard error.
 
 WebKitGTK runs through the system Python (Ubuntu: `apt install gir1.2-webkit2-4.1 xvfb`), and wkhtmltopdf
-with poppler's `pdftotext`; engines that are missing are skipped. The package itself has no dependencies.
+with poppler's `pdftotext`; engines that are missing are skipped. On macOS, `tests/engines.py` also opens a
+tab in Firefox and in Safari, on a page served from 127.0.0.1 that sends back where every cell landed. The
+pytest suite leaves them out, so it doesn't open browser windows. The package itself has no dependencies.
 
 [`docs/index.html`](docs/index.html) is the demo page, a single file: open it, or serve `docs/` with GitHub
 Pages.
 
 ## Next
 
-- Firefox: open the demo page; the label beside the sum says whether the layout matched.
 - More scans: comparison and subtraction read the bits in order with a small state, as the adder does, and
   should nest the same way. Only the adder is built.
 - Beyond scans: a result that feeds two later gates would open general circuits, and whether identical rows

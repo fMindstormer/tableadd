@@ -203,14 +203,16 @@ ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
   <section class="cols">
     <div class="prose">
       <h2>Where it works</h2>
-      <p>Four engines lay out all 512 four-bit tables (with and without carry in), 200 random eight-bit tables and 60 random twelve-bit tables with every cell in exactly the slot the specification gives it:</p>
+      <p>Six engines lay out all 512 four-bit tables (with and without carry in), 200 random eight-bit tables and 60 random twelve-bit tables with every cell in exactly the slot the specification gives it:</p>
       <ul class="plain">
         <li><b>Chromium 141</b>: Blink, the engine in Chrome and Edge</li>
-        <li><b>WebKitGTK 2.52</b>: WebKit, the engine Safari is built on</li>
+        <li><b>Firefox 159</b>: Gecko</li>
+        <li><b>Safari 27</b>: WebKit, in Safari itself</li>
+        <li><b>WebKitGTK 2.52</b>: WebKit, the engine Safari is built on, in its Linux port</li>
         <li><b>wkhtmltopdf 0.12.6</b>: a WebKit from 2016</li>
         <li><b>WeasyPrint 70</b>: a table layout written in Python</li>
       </ul>
-      <p class="muted">Firefox is not checked yet. The readout above is measured in your browser, so opening this page checks whichever engine you use.</p>
+      <p class="muted">The readout above is measured in your browser, so opening this page checks whichever engine you use.</p>
     </div>
     <div class="prose">
       <h2>What identical rows can and can't do</h2>
