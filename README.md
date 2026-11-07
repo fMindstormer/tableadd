@@ -114,6 +114,38 @@ specification's algorithm, not just the answer, and then reads the sum from the 
 The [demo page](docs/index.html) measures the layout in whichever browser opens it and says whether the sum
 it read matches *a* + *b*, so opening it checks any other browser.
 
+## Multiplication
+
+The same rule multiplies. Every row after the first is still one repeated line of HTML, but unlike the
+adder's, that line gets longer as the numbers get wider.
+
+[`research/product_scan.py`](research/product_scan.py) multiplies two *n*-bit numbers column by column. A
+count, the carry plus the partial products *a*<sub>*i*</sub>*b*<sub>*j*</sub> of the current column added so
+far, is passed from gadget to gadget the way the adder passes its carry, one partial product per row. What a
+gadget passes on is the number of free columns left of the next one, which is how many of the repeated row's
+cells from its first up to the gadget's last left reader have rowspan 1. So it never falls as the number of
+free columns the gadget finds to its left rises, and no single row can add *xy* to a count *T*:
+*T* + *xy* is not a non-decreasing function of any weighted sum of *T*, *x* and *y*. It takes two halves. A
+row reads *x* and *y*, each written *m* + 1 times, and passes on *T* + *xy* + *m*(*x* + *y*), where *m* bounds *T*; the next row takes
+*m*(*x* + *y*) away by reading NOT *x* and NOT *y*, written *m* times each, along with its own inputs. A
+column's last partial product is added and halved in one row, and the reader after that row's window gives
+the column's bit of the product, as R3 does in the adder. The repeated row is a block of 999s and two
+patterns of 1s, one for each kind of row.
+
+| Bits | Columns | Repeated rows | Cells in the repeated row |
+|---|---|---|---|
+| 2 × 2 | 53 | 5 | 10 |
+| 3 × 3 | 269 | 10 | 31 |
+| 4 × 4 | 695 | 17 | 50 |
+
+Every product is right in the specification's algorithm (all 16, 64 and 256), and Safari 27.0.1 places every
+cell where the specification does in all 64 three-bit tables and in 16 random four-bit ones. The other
+engines haven't been run on the multipliers yet, and Safari is slow on tables this wide. The tables
+are less tidy than the adder: some consumed columns stay free instead of being covered for good, and spare
+columns at the right end keep every row at least as wide as the repeated row.
+[`research/multiply.py`](research/multiply.py) is an earlier two-bit version built by hand, 75 columns and 4
+repeated rows of 17 cells: one row fewer than the general one, but wider.
+
 ## What I found on the way
 
 I first tried to make the repeated rows count, like a clock. That failed, and why it failed led to the adder.
@@ -160,6 +192,8 @@ python -m pytest tests                  # the spec's algorithm on many sums, the
 python tests/engines.py 8 200           # 200 random 8-bit tables in every engine installed
 python research/relaxation.py           # identical rows forget
 python research/no_counter.py           # the two counters that can't work
+python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every product
+python research/multiply.py             # the two-bit special case
 python tools/picture.py 11 6 4          # docs/example.png
 ```
 
@@ -176,9 +210,15 @@ Pages.
 
 ## Next
 
+- One row for every width: in the multipliers a state can only pass through maps that never go down, and
+  with a fixed row, programs made of such maps compute only AC⁰, constant-depth circuits, which
+  multiplication is not. If that holds for every layout, no single repeated row multiplies numbers of every
+  width; a layout that lets a state go down, for instance two nested states swapping, would get around it.
 - Fan-out: every result here feeds exactly one later block, which is why everything nests. A result that
-  feeds two later gates would open general circuits, starting with multiplication. Whether identical rows
-  can compute without a bound, like a cellular automaton, is also open.
+  feeds two later gates would open general circuits. Whether identical rows can compute without a bound,
+  like a cellular automaton, is also open.
+- Smaller, tidier multipliers: about a third of each one's columns are readers that only carry a window
+  from one pattern of the repeated row to the other, and a tenth are spare columns.
 
 ## License
 
