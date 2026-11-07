@@ -87,6 +87,15 @@ every repeated row finds exactly ten free columns and no cell spills past the ri
 Adding two *n*-bit numbers takes 10*n* + 3 columns and *n* repeated rows. The [code](tableadd/adder.py) is
 the same construction in Python, with the forming algorithm in [`tableadd/table.py`](tableadd/table.py).
 
+### Subtraction and comparison are the adder rewired
+
+Swapping the two columns of a pair inverts its bit: the left one is then the one that wakes when the bit is 0.
+So the adder with *b*'s pairs swapped and the carry in tied to 1 works out *a* + NOT *b* + 1 = *a* − *b* +
+2<sup>*n*</sup>. The sum bits are *a* − *b* modulo 2<sup>*n*</sup>, and the carry out is 1 exactly when
+*a* ≥ *b*. Only the order of the first row's columns changes, and the repeated rows are the same. The table
+for *a* − *b* is, byte for byte, the table for *a* + (2<sup>*n*</sup> − 1 − *b*) with a carry in, so the
+engine checks below have already laid out every four-bit subtraction.
+
 ## Where it works
 
 | Engine | What it is | Result |
@@ -144,6 +153,7 @@ I first tried to make the repeated rows count, like a clock. That failed, and wh
 ```sh
 python -m tableadd 173 85 --bits 8 > table.html    # the table for 173 + 85
 python -m tableadd 3 3 --bits 2 --style readme     # with marks, as in this README
+python -m tableadd 173 85 --bits 8 --sub           # 173 − 85, and whether 173 ≥ 85
 
 pip install -r requirements.txt && playwright install chromium
 python -m pytest tests                  # the spec's algorithm on many sums, then the engines
@@ -154,7 +164,7 @@ python tools/picture.py 11 6 4          # docs/example.png
 ```
 
 `python -m tableadd` writes the table to standard output and the sum it reads back from the layout to
-standard error.
+standard error; with `--sub`, the difference, signed by the carry out.
 
 WebKitGTK runs through the system Python (Ubuntu: `apt install gir1.2-webkit2-4.1 xvfb`), and wkhtmltopdf
 with poppler's `pdftotext`; engines that are missing are skipped. On macOS, `tests/engines.py` also opens a
@@ -166,10 +176,9 @@ Pages.
 
 ## Next
 
-- More scans: comparison and subtraction read the bits in order with a small state, as the adder does, and
-  should nest the same way. Only the adder is built.
-- Beyond scans: a result that feeds two later gates would open general circuits, and whether identical rows
-  can compute without a bound, like a cellular automaton, is open.
+- Fan-out: every result here feeds exactly one later block, which is why everything nests. A result that
+  feeds two later gates would open general circuits, starting with multiplication. Whether identical rows
+  can compute without a bound, like a cellular automaton, is also open.
 
 ## License
 

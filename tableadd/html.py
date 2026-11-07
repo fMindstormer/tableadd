@@ -4,8 +4,8 @@ from .adder import PROGRAM, H, bits, columns
 SUBSCRIPT = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
 
-def table(x, y, n, carry_in=0, style="plain", tid=None):
-    """The table that adds x + y (+ carry_in) in n bits.
+def table(x, y, n, carry_in=0, style="plain", tid=None, invert_b=False):
+    """The table that adds x + y (+ carry_in) in n bits; with invert_b, x + NOT y (+ carry_in).
 
     style 'plain':  rowspans only, nothing else.
     style 'readme': text marks for places that keep rowspan but strip scripts, styles and classes, such as a
@@ -14,7 +14,7 @@ def table(x, y, n, carry_in=0, style="plain", tid=None):
                     shows an orange square. Bit i of the sum is the first cell under its label s<i>.
     """
     a, b = bits(x, n), bits(y, n)
-    cols = columns(a, b, carry_in)
+    cols = columns(a, b, carry_in, invert_b)
     idattr = f' id="{tid}"' if tid else ""
     if style == "plain":
         first = "".join(f'<td rowspan="{h}"></td>' for _, h in cols)

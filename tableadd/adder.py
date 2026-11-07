@@ -16,6 +16,9 @@ PROGRAM[s + j - 1] == 1:
     R3: s odd     R4: s even     -> the sum bit, dual-rail
     R5: s = 1     R6: s = 0      -> together 'no carry', which keeps the block neutral to its right
 Full adder i+1 sits between R2 and R3, so in its row it counts R1 + R2: the carry, with no wire.
+
+Swapping the two columns of a pair inverts its bit. With b's pairs swapped and the carry in tied to 1 the same
+table computes a + NOT b + 1 = a - b + 2^n: the sum bits are a - b mod 2^n, and the carry out says a >= b.
 """
 from .table import lay_out
 
@@ -23,19 +26,22 @@ H = 999                                   # covers a column to the end of the ta
 PROGRAM = [H, H, H, 1, H, 1, H, H, H, H]  # the repeated row: 10 cells, rowspan 1 at positions 3 and 5
 
 
-def columns(a, b, carry_in=0):
+def columns(a, b, carry_in=0, invert_b=False):
     """The first row: (name, rowspan) for each column, left to right. rowspan = the row in which that column
-    first becomes free (H = never). a, b: lists of bits, least significant first."""
+    first becomes free (H = never). a, b: lists of bits, least significant first. invert_b swaps b's pairs, so
+    the adders read NOT b."""
     n = len(a)
 
     def full_adder(i):
         w = i + 1                                     # full adder i reads in row i + 1
-        cols = [(f"a{i}", w if a[i] else H), (f"b{i}", w if b[i] else H),
-                (f"carry{i}.3", w), (f"carry{i}.2", w)]
+        pb, nb = (f"b{i}", w if b[i] else H), (f"b{i}.not", w if not b[i] else H)
+        if invert_b:
+            pb, nb = nb, pb
+        cols = [(f"a{i}", w if a[i] else H), pb, (f"carry{i}.3", w), (f"carry{i}.2", w)]
         if i + 1 < n:
             cols += full_adder(i + 1)
         cols += [(f"sum{i}", w), (f"sum{i}.not", w), (f"nocarry{i}.1", w), (f"nocarry{i}.0", w),
-                 (f"b{i}.not", w if not b[i] else H), (f"a{i}.not", w if not a[i] else H)]
+                 nb, (f"a{i}.not", w if not a[i] else H)]
         return cols
 
     # the carry-in is dual-rail too, and one spare column fills row 1, so that every program row has exactly
@@ -44,9 +50,9 @@ def columns(a, b, carry_in=0):
             [("cin.not", 1 if not carry_in else H), ("spare", 1)])
 
 
-def rows(a, b, carry_in=0):
+def rows(a, b, carry_in=0, invert_b=False):
     """All rows of the table: the first row, then len(a) identical program rows."""
-    return [[h for _, h in columns(a, b, carry_in)]] + [list(PROGRAM) for _ in range(len(a))]
+    return [[h for _, h in columns(a, b, carry_in, invert_b)]] + [list(PROGRAM) for _ in range(len(a))]
 
 
 def decode(a, b, carry_in, layout):
@@ -72,3 +78,10 @@ def add(x, y, n, carry_in=0):
     """x + y (+ carry_in), computed by laying out the table with the specification's algorithm."""
     a, b = bits(x, n), bits(y, n)
     return decode(a, b, carry_in, lay_out(rows(a, b, carry_in)))
+
+
+def subtract(x, y, n):
+    """(x - y mod 2^n, x >= y), computed by laying out the adder with y's pairs swapped and carry in 1."""
+    a, b = bits(x, n), bits(y, n)
+    total = decode(a, b, 1, lay_out(rows(a, b, 1, invert_b=True)))
+    return total % 2 ** n, total >= 2 ** n

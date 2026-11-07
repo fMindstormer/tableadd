@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tableadd import PROGRAM, add, columns, rows  # noqa: E402
+from tableadd import PROGRAM, add, columns, rows, subtract  # noqa: E402
 from tableadd.adder import bits  # noqa: E402
 from tableadd.html import table  # noqa: E402
 from tableadd.table import place_row  # noqa: E402
@@ -20,6 +20,25 @@ def test_random_16bit_sums():
     for _ in range(300):
         x, y, c = rng.randrange(2 ** 16), rng.randrange(2 ** 16), rng.randrange(2)
         assert add(x, y, 16, c) == x + y + c
+
+
+def test_every_4bit_difference():
+    assert all(subtract(x, y, 4) == ((x - y) % 16, x >= y) for x in range(16) for y in range(16))
+
+
+def test_random_16bit_differences():
+    rng = random.Random(1)
+    for _ in range(300):
+        x, y = rng.randrange(2 ** 16), rng.randrange(2 ** 16)
+        assert subtract(x, y, 16) == ((x - y) % 2 ** 16, x >= y)
+
+
+def test_a_subtraction_table_is_an_addition_table():
+    """Swapping b's pairs gives, byte for byte, the table for x + NOT y + 1, so every engine check of all 4-bit
+    sums with carry in has already laid out every 4-bit subtraction."""
+    for x in range(16):
+        for y in range(16):
+            assert table(x, y, 4, 1, invert_b=True) == table(x, 15 - y, 4, 1)
 
 
 def test_program_rows_are_the_same_html():

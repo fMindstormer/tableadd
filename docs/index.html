@@ -219,7 +219,7 @@ ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
       <ul class="plain">
         <li><b>Alone, they settle.</b> When the repeated row is itself a short pattern (two to five cells over and over, rowspans one to four), every such row turns a random first row into a layout that repeats every 12 rows or fewer. Information only travels rightward, so disturbances drift off the edge.</li>
         <li><b>Two natural counters are impossible.</b> If a cell's free count is a multiple of the row's period, every position of the count looks the same to it. And cells that wake in turn can only push their state one way.</li>
-        <li><b>Scans work.</b> A reader has to sit inside the pairs it reads, so information flows inward, from the outside of the nest to its middle. That suits a chain like this adder, which reads the bits in order and passes on a carry. Comparison or subtraction should fit the same way, but only the adder is built. General circuits, where one result feeds two places, and unbounded computation from identical rows are still open.</li>
+        <li><b>Scans work.</b> A reader has to sit inside the pairs it reads, so information flows inward, from the outside of the nest to its middle. That suits a chain like this adder, which reads the bits in order and passes on a carry. Subtraction and comparison need no new parts: swapping the two columns of <i>b</i>&rsquo;s pairs inverts it, so the adder with carry in 1 works out <i>a</i>&nbsp;&minus;&nbsp;<i>b</i>, and its carry out says whether <i>a</i>&nbsp;&ge;&nbsp;<i>b</i>. General circuits, where one result feeds two places, and unbounded computation from identical rows are still open.</li>
       </ul>
     </div>
   </section>
