@@ -176,11 +176,11 @@ one another, one per bit or pair of bits, and at the end the reader's own cell g
 | inner product mod 2 of *n* pairs | 16*n* + 9 | 9*n* + 3 |
 
 Every answer is right in the specification's algorithm, for all inputs up to 8 bits and up to 4 pairs, and
-Safari 27.0.1 places every cell where the specification does in all 256 tables of each kind. A search found
-both stretches; with up to 3 columns waking per row, no row of up to 4 cells has a stretch of 4 rows or fewer
-that keeps an unordered pair for *x* = 0 and swaps it for *x* = 1. A row whose cells have rowspans 1, 2 and
-999 only has none of any length: its state is the last two counts, so a stretch's length alone decides
-whether it keeps or swaps the pair.
+Chromium 158 and Safari 27.0.1 place every cell where the specification does in all 256 tables of each kind.
+A search found both stretches; with up to 3 columns waking per row, no row of up to 4 cells has a stretch of
+4 rows or fewer that keeps an unordered pair for *x* = 0 and swaps it for *x* = 1. A row whose cells have
+rowspans 1, 2 and 999 only has none of any length: its state is the last two counts, so a stretch's length
+alone decides whether it keeps or swaps the pair.
 
 ## What I found on the way
 
