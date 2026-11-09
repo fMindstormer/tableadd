@@ -126,11 +126,11 @@ gadget passes on is the number of free columns left of the next one, which is ho
 cells from its first up to the gadget's last left reader have rowspan 1. So it never falls as the number of
 free columns the gadget finds to its left rises, and no single row can add *xy* to a count *T*:
 *T* + *xy* is not a non-decreasing function of any weighted sum of *T*, *x* and *y*. It takes two halves. A
-row reads *x* and *y*, each written *m* + 1 times, and passes on *T* + *xy* + *m*(*x* + *y*), where *m* bounds *T*; the next row takes
-*m*(*x* + *y*) away by reading NOT *x* and NOT *y*, written *m* times each, along with its own inputs. A
-column's last partial product is added and halved in one row, and the reader after that row's window gives
-the column's bit of the product, as R3 does in the adder. The repeated row is a block of 999s and two
-patterns of 1s, one for each kind of row.
+row reads *x* and *y*, each written *m* + 1 times, and passes on *T* + *xy* + *m*(*x* + *y*), where *m*
+bounds *T*; the next row takes *m*(*x* + *y*) away by reading NOT *x* and NOT *y*, written *m* times each,
+along with its own inputs. A column's last partial product is added and halved in one row, and the reader
+after that row's window gives the column's bit of the product, as R3 does in the adder. The repeated row is
+a block of 999s and two patterns of 1s, one for each kind of row.
 
 | Bits | Columns | Repeated rows | Cells in the repeated row |
 |---|---|---|---|
@@ -168,6 +168,17 @@ I first tried to make the repeated rows count, like a clock. That failed, and wh
 - **Pairs fix it.** A pair counts as one free column to everything outside it, so a bit can be read without
   moving anything else. The price is the shape: a reader has to sit inside every pair it reads, so
   information only flows inward, from the outside of the nest to its middle.
+- **Each position counts on its own.** Take the number of free columns left of some column in a row. In the
+  next row it is how many of them landed on a cell of rowspan 1 or past the repeated row's last cell, where
+  they get no cell and stay free, plus the columns left of it whose longer cells from earlier rows end, plus
+  first-row cells that end. Nothing else enters
+  ([`research/positions.py`](research/positions.py) has the proof and checks it on 3000 random tables). A
+  reader learns only its own count, so every bit is the end of one such chain worked out from the first row,
+  and no result is computed once and passed to two places. The count never falls when an earlier one
+  rises, which is why adding a partial product takes two rows. Nor is it bounded by the row's length: with
+  the two cells `<td rowspan="999"></td><td rowspan="1"></td>`, a column that wakes in row *t* is free in
+  row *t* + 1 exactly when at least *t* of the input bits to its left are 1, so a two-cell row computes
+  majority.
 
 ## What came before
 
@@ -192,6 +203,7 @@ python -m pytest tests                  # the spec's algorithm on many sums, the
 python tests/engines.py 8 200           # 200 random 8-bit tables in every engine installed
 python research/relaxation.py           # identical rows forget
 python research/no_counter.py           # the two counters that can't work
+python research/positions.py            # each position counts on its own; majority in two cells
 python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every product
 python research/multiply.py             # the two-bit special case
 python tools/picture.py 11 6 4          # docs/example.png
@@ -210,13 +222,15 @@ Pages.
 
 ## Next
 
-- One row for every width: in the multipliers a state can only pass through maps that never go down, and
-  with a fixed row, programs made of such maps compute only AC⁰, constant-depth circuits, which
-  multiplication is not. If that holds for every layout, no single repeated row multiplies numbers of every
-  width; a layout that lets a state go down, for instance two nested states swapping, would get around it.
-- Fan-out: every result here feeds exactly one later block, which is why everything nests. A result that
-  feeds two later gates would open general circuits. Whether identical rows can compute without a bound,
-  like a cellular automaton, is also open.
+- One row for every width: which functions can a fixed repeated row compute? While a count is below the
+  row's length, the row can send it through any staircase that rises by 0 or 1 at a time; past that, it
+  takes off the same amount whatever the count. My guess is that no fixed row multiplies numbers of every
+  width, because the middle bits of a product need a count of up to about *n* partial products; inner
+  product mod 2 is the cleanest case to try to prove. (This item used to say that a fixed row computes only
+  AC⁰. That assumed a count stays below the row's length, and majority, above, shows it doesn't.)
+- Computing without a bound: in Rule 110, cells exchange results. Here no position ever sees another's;
+  each runs its own count over the first row to its left. I expect identical rows can't compute without a
+  bound in that sense, but the question needs a precise statement first.
 - Smaller, tidier multipliers: about a third of each one's columns are readers that only carry a window
   from one pattern of the repeated row to the other, and a tenth are spare columns.
 
