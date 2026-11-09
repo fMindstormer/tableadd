@@ -146,6 +146,42 @@ columns at the right end keep every row at least as wide as the repeated row.
 [`research/multiply.py`](research/multiply.py) is an earlier two-bit version built by hand, 75 columns and 4
 repeated rows of 17 cells: one row fewer than the general one, but wider.
 
+## One fixed row
+
+The multipliers' repeated row gets longer with the width. This one doesn't: with the same three cells in
+every repeated row,
+
+```html
+<td rowspan="999"></td><td rowspan="2"></td><td rowspan="3"></td>
+```
+
+[`research/fixed_row.py`](research/fixed_row.py) computes the parity of any number of bits and the inner
+product mod 2 of two bit strings, *x*₀*y*₀ ⊕ *x*₁*y*₁ ⊕ …. No constant-depth, polynomial-size circuit of AND,
+OR and NOT gates computes either.
+
+Of the free columns left of the reader, the first gets the 999 and is gone, the second sleeps one row, the
+third sleeps two, and the rest get no cell and stay free. So the count in the next row depends on the last
+three counts and on how many columns to the left wake. If one column wakes in every row, the count goes 1, 2,
+1, 2, …, and its last three values swing between (1, 2, 1) and (2, 1, 2). Which of the two the chain is at
+holds a bit. Neither state has at least as many free columns as the other in all three rows, and that is what
+lets a stretch of rows swap them: the count never gives fewer free columns for more, so two runs fed the same
+input that are ordered stay ordered. In a five-row stretch where 2, 3, 0, 0, 0 columns wake if *x* = 0, and 1,
+1, 1, 1, 1 if *x* = 1, the two states stay put for *x* = 0 and swap for *x* = 1. A nine-row stretch, with each
+row's count of waking columns linear in *x* and *y*, swaps them only when both are 1. The stretches follow
+one another, one per bit or pair of bits, and at the end the reader's own cell gets rowspan 2 or 3.
+
+| Function | Columns | Repeated rows |
+|---|---|---|
+| parity of *n* bits | 8*n* + 9 | 5*n* + 3 |
+| inner product mod 2 of *n* pairs | 16*n* + 9 | 9*n* + 3 |
+
+Every answer is right in the specification's algorithm, for all inputs up to 8 bits and up to 4 pairs, and
+Safari 27.0.1 places every cell where the specification does in all 256 tables of each kind. A search found
+both stretches; with up to 3 columns waking per row, no row of up to 4 cells has a stretch of 4 rows or fewer
+that keeps an unordered pair for *x* = 0 and swaps it for *x* = 1. A row whose cells have rowspans 1, 2 and
+999 only has none of any length: its state is the last two counts, so a stretch's length alone decides
+whether it keeps or swaps the pair.
+
 ## What I found on the way
 
 I first tried to make the repeated rows count, like a clock. That failed, and why it failed led to the adder.
@@ -206,6 +242,7 @@ python research/no_counter.py           # the two counters that can't work
 python research/positions.py            # each position counts on its own; majority in two cells
 python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every product
 python research/multiply.py             # the two-bit special case
+python research/fixed_row.py            # parity and inner product mod 2 with one fixed row of 3 cells
 python tools/picture.py 11 6 4          # docs/example.png
 ```
 
@@ -222,12 +259,12 @@ Pages.
 
 ## Next
 
-- One row for every width: which functions can a fixed repeated row compute? While a count is below the
-  row's length, the row can send it through any staircase that rises by 0 or 1 at a time; past that, it
-  takes off the same amount whatever the count. My guess is that no fixed row multiplies numbers of every
-  width, because the middle bits of a product need a count of up to about *n* partial products; inner
-  product mod 2 is the cleanest case to try to prove. (This item used to say that a fixed row computes only
-  AC⁰. That assumed a count stays below the row's length, and majority, above, shows it doesn't.)
+- One row for every width: which functions can a fixed repeated row compute? More than I guessed: majority
+  with two cells, parity and inner product mod 2 with three. With `999 2 3`, a stretch can swap the two
+  states on a product of two bits, but none of up to 12 rows swaps on a product of three
+  (`python research/fixed_row.py --search`). Whether a fixed row multiplies numbers of every width is open
+  again. (This item used to guess that no fixed row does, with inner product mod 2 as the case to
+  prove, and before that that a fixed row computes only AC⁰.)
 - Computing without a bound: in Rule 110, cells exchange results. Here no position ever sees another's;
   each runs its own count over the first row to its left. I expect identical rows can't compute without a
   bound in that sense, but the question needs a precise statement first.
