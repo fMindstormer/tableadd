@@ -180,7 +180,9 @@ Chromium 158 and Safari 27.0.1 place every cell where the specification does in 
 A search found both stretches; with up to 3 columns waking per row, no row of up to 4 cells has a stretch of
 4 rows or fewer that keeps an unordered pair for *x* = 0 and swaps it for *x* = 1. A row whose cells have
 rowspans 1, 2 and 999 only has none of any length: its state is the last two counts, so a stretch's length
-alone decides whether it keeps or swaps the pair.
+alone decides whether it keeps or swaps the pair. The same holds for any number of states: on a set of
+mutually unordered ones, such a stretch is the identity or one fixed reversal, depending on whether its
+length is even or odd ([`research/stretch_groups.py`](research/stretch_groups.py)).
 
 ## What I found on the way
 
@@ -243,6 +245,7 @@ python research/positions.py            # each position counts on its own; major
 python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every product
 python research/multiply.py             # the two-bit special case
 python research/fixed_row.py            # parity and inner product mod 2 with one fixed row of 3 cells
+python research/stretch_groups.py       # which permutations of states stretches can make; --search too
 python tools/picture.py 11 6 4          # docs/example.png
 ```
 
@@ -263,8 +266,13 @@ Pages.
   with two cells, parity and inner product mod 2 with three. With `999 2 3`, a stretch can swap the two
   states on a product of two bits, but none of up to 12 rows swaps on a product of three
   (`python research/fixed_row.py --search`). Whether a fixed row multiplies numbers of every width is open
-  again. (This item used to guess that no fixed row does, with inner product mod 2 as the case to
-  prove, and before that that a fixed row computes only AC⁰.)
+  again. One way would settle it: if stretches could permute five mutually unordered states so as to
+  generate A₅, Barrington's theorem would give every NC¹ function, every bit of a product among them. So far
+  stretches only rotate such states, and with two returning rowspans, such as `999 2 4`, also reflect three
+  of them. With rowspans 1, 2 and 999 only, the input can't steer them at all. With one returning rowspan,
+  two runs fed the same input never gain sign changes between them, which may be what limits those rows to
+  rotations; that isn't proved. (This item used to guess that no fixed row multiplies every width, with
+  inner product mod 2 as the case to prove, and before that that a fixed row computes only AC⁰.)
 - Computing without a bound: in Rule 110, cells exchange results. Here no position ever sees another's;
   each runs its own count over the first row to its left. I expect identical rows can't compute without a
   bound in that sense, but the question needs a precise statement first.
