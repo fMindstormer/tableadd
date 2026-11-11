@@ -106,16 +106,19 @@ def _rows(words):
 class Table:
     """A first row with the stretches in order, then the reader, then spare columns."""
 
+    PROGRAM, START, H = PROGRAM, START, H
+    READ = {(2,): 0, (3,): 1}          # the reader's cell in the last row -> the answer
+
     def __init__(self, stretches):
         self.stretches = stretches      # [(names of the stretch's bits, words)]
-        self.R = len(START) + sum(len(next(iter(w.values()))) for _, w in stretches)
+        self.R = len(self.START) + sum(len(next(iter(w.values()))) for _, w in stretches)
         self.spares = []
         self._fill_spares()
 
     def columns(self, value):
         """(name, rowspan) for the first row; value maps each bit's name to 0 or 1."""
         cols, row = [], 1
-        for e in START:
+        for e in self.START:
             cols += [(f"start.r{row}.{c}", row) for c in range(e)]
             row += 1
         for names, words in self.stretches:
@@ -124,25 +127,25 @@ class Table:
                 assert k >= 0
                 cols += [(f"r{row}.{c}", row) for c in range(k)]
                 for nm, a in zip(names, coef):
-                    on, off = (row, H) if a > 0 else (H, row)
+                    on, off = (row, self.H) if a > 0 else (self.H, row)
                     cols += [(f"r{row}.{nm}{'' if a > 0 else '.not'}.{c}", on if value[nm] else off)
                              for c in range(abs(a))]
                 row += 1
         return cols + [("reader", self.R)] + self.spares
 
     def bits(self):
-        return [nm for names, _ in self.stretches for nm in names]
+        return list(dict.fromkeys(nm for names, _ in self.stretches for nm in names))
 
     def rows(self, value):
-        return [[h for _, h in self.columns(value)]] + [list(PROGRAM)] * self.R
+        return [[h for _, h in self.columns(value)]] + [list(self.PROGRAM)] * self.R
 
     def read(self, value):
-        """The reader's cell in row R: 0 if it has rowspan 2, 1 if rowspan 3."""
+        """The answer: READ maps the reader's cell in row R to it (rowspan 2: 0, rowspan 3: 1)."""
         cols = self.columns(value)
         reader = next(i for i, (nm, _) in enumerate(cols) if nm == "reader")
         layout = lay_out(self.rows(value))
-        got = [PROGRAM[j] for j, c in enumerate(layout[self.R]) if c == reader]
-        return {(2,): 0, (3,): 1}.get(tuple(got))
+        got = [self.PROGRAM[j] for j, c in enumerate(layout[self.R]) if c == reader]
+        return self.READ.get(tuple(got))
 
     def width(self):
         return len(self.columns({nm: 0 for nm in self.bits()}))
@@ -157,7 +160,7 @@ class Table:
             for value in self.inputs():
                 cov = []
                 for r, row in enumerate(self.rows(value)):
-                    if r and sum(1 for c in cov if c == 0) < len(PROGRAM):
+                    if r and sum(1 for c in cov if c == 0) < len(self.PROGRAM):
                         short = r if short is None else min(short, r)
                         break
                     _, cov = place_row(cov, row)

@@ -184,6 +184,45 @@ alone decides whether it keeps or swaps the pair. The same holds for any number 
 mutually unordered ones, such a stretch is the identity or one fixed reversal, depending on whether its
 length is even or odd ([`research/stretch_groups.py`](research/stretch_groups.py)).
 
+### Every formula, with a rowspan of 6
+
+Make the last cell's rowspan 6 instead of 3 and the same three cells compute any formula of ANDs, ORs and
+NOTs:
+
+```html
+<td rowspan="999"></td><td rowspan="2"></td><td rowspan="6"></td>
+```
+
+Now the third free column sleeps five rows. If one column wakes in every row and four are live, the count is
+3 in every sixth row and 2 in the others, so the chain goes round six states. Five of them are mutually
+unordered, and stretches of rows move those five in all 120 possible ways; stretches of 10, 11 and 14 rows
+already generate every one. That group contains A₅, which isn't solvable, and that is what Barrington's
+theorem needs: it turns a formula of depth *d* into at most 4<sup>*d*</sup> instructions, each a pair of
+equally long stretches, one for *x* = 0 and one for *x* = 1, that does a 3-cycle of the five states or
+nothing. Constant stretches go between them. [`research/barrington.py`](research/barrington.py) compiles
+formulas this way and lays every table out with the specification's algorithm:
+
+| Formula | Columns | Repeated rows |
+|---|---|---|
+| *x*₀ AND *x*₁ | 183 | 147 |
+| *x*₀ XOR *x*₁ | 736 | 662 |
+| (*x*₀ AND *x*₁) OR (*x*₂ AND NOT *x*₃) | 736 | 662 |
+| majority of three bits | 1818 | 1628 |
+
+Every answer is right for every input. Chromium 158 places every cell where the specification does in all
+32 tables, and Safari 27.2 in the 24 with fewer than 999 rows. Safari's time grows with the rowspans
+themselves: with 65534 in place of 999 it still places every cell of the AND tables right, but takes about 40
+times as long, and it didn't finish one majority table in 15 minutes. A formula of depth *d* takes at most
+77 · 4<sup>*d*</sup> + 6 repeated rows and about as many columns. A depth of O(log *n*) therefore gives
+tables of size polynomial in *n*, and that covers every function in NC¹, every bit of the product of two
+*n*-bit numbers among them. For any interesting *n* the tables are far too big to lay out, though.
+
+The 999 has to be more than the number of rows, so the majority tables already use 65534, the largest
+rowspan HTML has. A row that is the same for every *n* needs `rowspan="0"`, which the specification lets
+grow to the end of the row group; I haven't checked browsers on that yet. Other rows work too: of the 90
+rows of 999 and two different rowspans from 2 to 7, `python research/barrington.py --search` finds A₅ or S₅
+on five states in 12, all with 999 first and a cell of rowspan 6 or 7.
+
 ## What I found on the way
 
 I first tried to make the repeated rows count, like a clock. That failed, and why it failed led to the adder.
@@ -246,6 +285,7 @@ python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every
 python research/multiply.py             # the two-bit special case
 python research/fixed_row.py            # parity and inner product mod 2 with one fixed row of 3 cells
 python research/stretch_groups.py       # which permutations of states stretches can make; --search too
+python research/barrington.py           # every formula with the fixed row 999 2 6; --search: other rows
 python tools/picture.py 11 6 4          # docs/example.png
 ```
 
@@ -262,17 +302,15 @@ Pages.
 
 ## Next
 
-- One row for every width: which functions can a fixed repeated row compute? More than I guessed: majority
-  with two cells, parity and inner product mod 2 with three. With `999 2 3`, a stretch can swap the two
-  states on a product of two bits, but none of up to 12 rows swaps on a product of three
-  (`python research/fixed_row.py --search`). Whether a fixed row multiplies numbers of every width is open
-  again. One way would settle it: if stretches could permute five mutually unordered states so as to
-  generate A₅, Barrington's theorem would give every NC¹ function, every bit of a product among them. So far
-  stretches only rotate such states, and with two returning rowspans, such as `999 2 4`, also reflect three
-  of them. With rowspans 1, 2 and 999 only, the input can't steer them at all. With one returning rowspan,
-  two runs fed the same input never gain sign changes between them, which may be what limits those rows to
-  rotations; that isn't proved. (This item used to guess that no fixed row multiplies every width, with
-  inner product mod 2 as the case to prove, and before that that a fixed row computes only AC⁰.)
+- One row for every width: which functions can a fixed repeated row compute? Majority with two cells, parity
+  and inner product mod 2 with three, and with `999 2 6`, every formula: all of NC¹, so tables of polynomial
+  size with one fixed row multiply numbers of every width after all, as long as the 999 stays above the number
+  of rows. Two things are left. One is `rowspan="0"` for the 999, so that the row really is the same for every
+  width (see above). The other is the ceiling. An output is the end of one position's chain, which in a table
+  of polynomial size has polynomially many states, so a branching program of polynomial size can follow it,
+  row by row and literal by literal: a fixed row computes no more than L/poly. Whether it gets past NC¹ is
+  open. (This item used to guess that a fixed row computes only AC⁰, then that no fixed row multiplies every
+  width.)
 - Computing without a bound: in Rule 110, cells exchange results. Here no position ever sees another's;
   each runs its own count over the first row to its left. I expect identical rows can't compute without a
   bound in that sense, but the question needs a precise statement first.

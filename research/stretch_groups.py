@@ -3,8 +3,9 @@
 research/fixed_row.py keeps a bit in two states of the reader's chain that a stretch of rows can swap. With
 five such states, and stretches whose permutations generate A5 (a step reads one bit and does one of two
 permutations, both stretches of the same length), Barrington's theorem would give every NC1 function, every
-bit of a product included, with one fixed row and polynomial-size tables. This file is about whether that is
-possible.
+bit of a product included, with one fixed row and polynomial-size tables. That turns out to be possible,
+with a cell of rowspan 6 or 7 (the end of this docstring); this file is about which permutations stretches
+make.
 
 The chain's state is its last D counts, D the largest rowspan below 999 in the row, and two states are
 unordered when neither has at least as many free columns as the other in all D rows. Two runs fed the same
@@ -41,13 +42,15 @@ rowspan.
 Longer runs of the same searches find nothing more: 3 states with one returning rowspan up to 9 rows; cycles
 of 4 and 5 states in rows of up to 3 cells up to 11 rows, and in 999 5 3 up to 14; cycles of 5 states in
 every row of 4 cells with two or more returning rowspans up to 10. With rowspans up to 5, no constant input
-has a cycle longer than 5, so these are all the cycles there are. So stretches have given rotations, and on 3
-states reflections, nothing that would lead to A5.
+has a cycle longer than 5, so on five states these rows only rotate.
+
+A longer cycle is another matter. With a rowspan of 6 or 7, five of the six or seven states of a cycle can be
+mutually unordered, and stretches can move them every way. In 999 2 6, stretches of 10, 11 and 14 rows
+generate all of S5 on five of the six, so A5 is there and Barrington's theorem gives every NC1 function with
+that one row; research/barrington.py builds the tables and checks them.
 
 Open: whether a row with one returning rowspan of 3 or more ever does more than rotate (1 alone does not
-settle it: for a single sleeping column at different phases, every pair of states has exactly 2 sign changes),
-and whether a row with two, which can reflect 3 states, can generate A5 on 5 or more, with longer stretches,
-longer cycles (rowspans past 5) or sets that are not cycles.
+settle it: for a single sleeping column at different phases, every pair of states has exactly 2 sign changes).
 """
 import random
 import sys
