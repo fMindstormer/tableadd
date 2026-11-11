@@ -1,8 +1,12 @@
 """Every formula with one fixed repeated row: python research/barrington.py [--search]
 
-Every repeated row is the same three cells, whatever the formula:
+Every repeated row is the same three cells, whatever the formula and however long the table:
 
-    <td rowspan="999"></td><td rowspan="2"></td><td rowspan="6"></td>
+    <td rowspan="0"></td><td rowspan="2"></td><td rowspan="6"></td>
+
+In a page with <!doctype html>, rowspan="0" makes a cell grow downward to the end of its row group, so the
+first cell is a 999 that never runs out. Below it is written 999, as in the other files; the tables use 0 for
+every cell that never ends (FormulaTable(..., never=999) gives the 999 version, for fewer than 999 rows).
 
 As in research/fixed_row.py, the reader learns only F_s, the number of free columns to its left in row s, and
 with this row
@@ -38,7 +42,7 @@ followed by a stretch that makes b^-1 whatever the input. Neighbouring constant 
 shortest one that makes their product. With stretches of up to 30 rows, every 3-cycle has such a pair, of 15
 to 24 rows, and every permutation a constant stretch, of at most 53 rows. As in research/fixed_row.py, each
 row's e is written into the first row: constants as cells of rowspan s, x as a cell of rowspan s if x = 1 and
-999 if x = 0 (or the other way round, for an e that falls when x rises).
+0 if x = 0 (or the other way round, for an e that falls when x rises).
 
 Six rows with e = 2 2 1 1 1 2 bring the chain to X0, whose count is 3. The program's product is a 3-cycle that
 moves X0 to a state with count 2 if the formula holds, and the identity if it doesn't. In the last row the
@@ -48,9 +52,13 @@ it is 3. The run lays every table out with the forming algorithm and reads the a
 So a formula of depth d takes at most 77 * 4^d + 6 repeated rows (24 for an instruction's pair, 53 for the
 constant after it), and about as many columns. Every function in NC1, every bit of the product of two n-bit
 numbers among them, has formulas of depth O(log n), so tables of size polynomial in n compute it, all with
-this one repeated row. The 999 has to be more than the number of rows; tables of 999 rows or more here use
-65534, the largest rowspan HTML has. rowspan="0", which the specification lets grow to the end of the row
-group, would keep one row for every n; that hasn't been checked here.
+this one repeated row.
+
+Several outputs can share one table (Outputs). Each formula's cells come after the previous one's reader in
+the first row, and its rows start once the count just right of that reader has drained to 0 for every input:
+in rows where no column wakes, every row with a free column loses one for good and asleep columns wake within
+five rows. Here that takes 12 rows. The run builds the four bits of the product of two 2-bit numbers this way,
+in one table, and checks all 16 products.
 
 --search (about 6 hours of CPU; an hour and a half on 10 cores): which other rows of 3 cells do the same. For
 every row of 999 and two different rowspans from 2 to 7, in any order: every cycle of 5 or more states under
@@ -74,6 +82,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import fixed_row  # noqa: E402
+from tableadd.table import lay_out  # noqa: E402
 from positions import free_left  # noqa: E402
 from stretch_groups import EMAX, H, chain, le, live  # noqa: E402
 
@@ -200,15 +209,105 @@ def by_layout(word):
 # --- formulas -----------------------------------------------------------------------------------------------
 
 class FormulaTable(fixed_row.Table):
+    """One formula. never: the rowspan of the cells that never end, 0 (grow to the end of the table) or 999."""
     PROGRAM, READ = PROGRAM, {(6,): 1, (): 0}
 
-    def __init__(self, start, stretches):
+    def __init__(self, start, stretches, never=0):
         self.START = start
         rows = len(start) + sum(len(next(iter(w.values()))) for _, w in stretches)
-        self.H = H if rows < H else 65534
-        assert rows < self.H
-        self.PROGRAM = [self.H, 2, 6]
+        assert never == 0 or rows < never
+        self.H = never
+        self.PROGRAM = [never, 2, 6]
         super().__init__(stretches)
+
+
+class Outputs(fixed_row.Table):
+    """Several formulas in one table, one after another. The first row holds, for each output in turn, the cells
+    of its stretches and then its reader. The next output's stretches start once the count just right of that
+    reader has drained to 0 for every input: in the rows between, no column wakes, every row with a free column
+    loses one for good, and asleep columns wake within five rows."""
+
+    READ = FormulaTable.READ
+
+    def __init__(self, cp, formulas, never=0):
+        self.H, self.PROGRAM, self.START = never, [never, 2, 6], cp.start
+        self.formulas, self.blocks, self.spares, self.drains = formulas, [], [], []
+        self.stretches = []                       # only for bits()
+        _, step = chain(PROGRAM)
+        base = 0
+        for k, f in enumerate(formulas):
+            parts = cp.best(f)
+            self.stretches += parts
+            R = base + len(cp.start) + sum(len(next(iter(w.values()))) for _, w in parts)
+            self.blocks.append((base, parts, R))
+            if k + 1 == len(formulas):
+                break
+            end = R
+            for value in self.inputs():           # the count just right of reader k, row by row
+                e = {}
+                for _, h in self.columns(value):
+                    e[h] = e.get(h, 0) + 1
+                state, row = (0,) * 6, 0
+                while row < R or any(state):
+                    row += 1
+                    state = step(state, e.get(row, 0))
+                end = max(end, row)
+            self.drains.append(end - R)
+            base = end
+        self.R = self.blocks[-1][2]
+        assert never == 0 or self.R < never
+        self._fill_spares()
+
+    def columns(self, value):
+        cols = []
+        for k, (base, parts, R) in enumerate(self.blocks):
+            row = base + 1
+            for e in self.START:
+                cols += [(f"o{k}.start.r{row}.{c}", row) for c in range(e)]
+                row += 1
+            for names, words in parts:
+                for const, coef in fixed_row._rows(words):
+                    n = const - sum(-a for a in coef if a < 0)
+                    cols += [(f"o{k}.r{row}.{c}", row) for c in range(n)]
+                    for nm, a in zip(names, coef):
+                        on, off = (row, self.H) if a > 0 else (self.H, row)
+                        cols += [(f"o{k}.r{row}.{nm}{'' if a > 0 else '.not'}.{c}", on if value[nm] else off)
+                                 for c in range(abs(a))]
+                    row += 1
+            assert row - 1 == R
+            cols.append((f"reader{k}", R))
+        return cols + self.spares
+
+    def _fill_spares(self):
+        """As fixed_row.Table does, but each layout's free columns at the right edge come from the chain there,
+        which positions.py shows is the same, and is much faster here."""
+        _, step = chain(PROGRAM)
+        while True:
+            short = None
+            for value in self.inputs():
+                e = {}
+                for _, h in self.columns(value):
+                    e[h] = e.get(h, 0) + 1
+                state = (0,) * 6
+                for row in range(1, self.R + 1):
+                    state = step(state, e.get(row, 0))
+                    if state[0] < len(self.PROGRAM):
+                        short = row if short is None else min(short, row)
+                        break
+            if short is None:
+                return
+            self.spares.append((f"spare{len(self.spares)}", short))
+
+    def read(self, value):
+        """Each output, from its reader's cell in the reader's last row."""
+        cols = self.columns(value)
+        layout = lay_out(self.rows(value))
+        out = []
+        for k, (_, _, R) in enumerate(self.blocks):
+            reader = next(i for i, (nm, _) in enumerate(cols) if nm == f"reader{k}")
+            got = [self.PROGRAM[j] for j, c in enumerate(layout[R]) if c == reader]
+            out.append(self.READ.get(tuple(got)))
+        return out
 
 
 class Compiler:
@@ -258,11 +357,13 @@ class Compiler:
             return self.program(('not', ('and', ('not', f[1]), ('not', f[2]))), g)
         raise ValueError(f[0])
 
-    def table(self, f):
-        """The shortest of the tables for f, one for each 3-cycle the output can be."""
-        best = min((self.parts(f, g) for g in self.tops), key=lambda ps: sum(len(next(iter(w.values())))
+    def best(self, f):
+        """The shortest of the programs for f, one for each 3-cycle the output can be."""
+        return min((self.parts(f, g) for g in self.tops), key=lambda ps: sum(len(next(iter(w.values())))
                                                                               for _, w in ps))
-        return FormulaTable(self.start, best)
+
+    def table(self, f, never=0):
+        return FormulaTable(self.start, self.best(f), never)
 
     def parts(self, f, top):
         parts, acc = [], ID
@@ -291,6 +392,23 @@ def value(f, v):
 def x(i):
     return ('x', f"x{i}")
 
+
+def AND(*fs):
+    out = fs[0]
+    for f in fs[1:]:
+        out = ('and', out, f)
+    return out
+
+
+def XOR(f, g):
+    return ('or', ('and', f, ('not', g)), ('and', ('not', f), g))
+
+
+A0, A1, B0, B1 = ('x', 'a0'), ('x', 'a1'), ('x', 'b0'), ('x', 'b1')
+PRODUCT = [AND(A0, B0),                            # the bits of (2 a1 + a0)(2 b1 + b0), lowest first
+           XOR(AND(A1, B0), AND(A0, B1)),
+           AND(AND(A1, B1), ('not', AND(A0, B0))),
+           AND(AND(A1, B1), AND(A0, B0))]
 
 FORMULAS = {
     "x0 AND x1": ('and', x(0), x(1)),
@@ -399,4 +517,12 @@ if __name__ == "__main__":
         t = cp.table(f)
         wrong = sum(t.read(v) != value(f, v) for v in t.inputs())
         print(f"{name}: {len(t.inputs())} inputs, {wrong} wrong; {t.width()} columns ({len(t.spares)} spare), "
-              f"{t.R} repeated rows, rowspan {t.H} for 'never'", flush=True)
+              f"{t.R} repeated rows", flush=True)
+    T = Outputs(cp, PRODUCT)
+    wrong = 0
+    for v in T.inputs():
+        a, b = v["a0"] + 2 * v["a1"], v["b0"] + 2 * v["b1"]
+        wrong += T.read(v) != [(a * b >> i) & 1 for i in range(4)]
+    print(f"the 4 bits of the product of two 2-bit numbers, in one table: {len(T.inputs())} products, "
+          f"{wrong} wrong; {T.width()} columns ({len(T.spares)} spare), {T.R} repeated rows "
+          f"(drains of {T.drains})", flush=True)

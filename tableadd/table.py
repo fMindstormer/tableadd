@@ -5,7 +5,13 @@ row still covers, then the cursor moves one column on. A cell with rowspan h cov
 With colspan 1 two cells can never overlap, so this is the whole algorithm, with no error cases in which
 browsers could differ.
 
+A cell with rowspan="0" grows downward: in standards mode (a page with <!doctype html>) the specification makes
+it cover its column in every later row of its row group, and every table here is one row group, so it never
+frees its column.
+
 cov[x] = how many more rows column x stays covered by cells placed in earlier rows (0 = free)."""
+
+GROWS = float("inf")    # cov of a column under a cell with rowspan 0
 
 
 def place_row(cov, rowspans):
@@ -20,7 +26,7 @@ def place_row(cov, rowspans):
             cov.extend([0] * (x + 1 - len(cov)))
             nxt.extend([0] * (x + 1 - len(nxt)))
         cols.append(x)
-        nxt[x] = h - 1
+        nxt[x] = h - 1 if h else GROWS
         x += 1
     return cols, nxt
 

@@ -75,3 +75,16 @@ def test_every_program_row_uses_exactly_its_cells():
             if r > 0:
                 assert sum(1 for v in cov if v == 0) == len(PROGRAM) and len(cov) == width
             _, cov = place_row(cov, row)
+
+
+def test_rowspan_zero_never_frees_its_column():
+    """rowspan="0" grows to the end of the row group, so it lays out like a rowspan longer than the table."""
+    from tableadd.table import lay_out
+    rng = random.Random(2)
+    for _ in range(200):
+        n = rng.randrange(2, 30)
+        first = [rng.choice([0, 1, 2, 3, 5, 8]) for _ in range(rng.randrange(1, 12))]
+        program = [rng.choice([0, 1, 2, 3, 6]) for _ in range(rng.randrange(1, 5))]
+        table = [first] + [program] * n
+        big = [[h if h else n + 1 for h in row] for row in table]
+        assert lay_out(table) == lay_out(big)

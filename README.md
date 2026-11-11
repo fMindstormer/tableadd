@@ -209,19 +209,36 @@ formulas this way and lays every table out with the specification's algorithm:
 | (*x*₀ AND *x*₁) OR (*x*₂ AND NOT *x*₃) | 736 | 662 |
 | majority of three bits | 1818 | 1628 |
 
-Every answer is right for every input. Chromium 158 places every cell where the specification does in all
-32 tables, and Safari 27.2 in the 24 with fewer than 999 rows. Safari's time grows with the rowspans
-themselves: with 65534 in place of 999 it still places every cell of the AND tables right, but takes about 40
-times as long, and it didn't finish one majority table in 15 minutes. A formula of depth *d* takes at most
+Every answer is right for every input, and Chromium 158 and Safari 27.2 place every cell where the
+specification does in all 24 tables with fewer than 999 rows. A formula of depth *d* takes at most
 77 · 4<sup>*d*</sup> + 6 repeated rows and about as many columns. A depth of O(log *n*) therefore gives
 tables of size polynomial in *n*, and that covers every function in NC¹, every bit of the product of two
 *n*-bit numbers among them. For any interesting *n* the tables are far too big to lay out, though.
 
-The 999 has to be more than the number of rows, so the majority tables already use 65534, the largest
-rowspan HTML has. A row that is the same for every *n* needs `rowspan="0"`, which the specification lets
-grow to the end of the row group; I haven't checked browsers on that yet. Other rows work too: of the 90
-rows of 999 and two different rowspans from 2 to 7, `python research/barrington.py --search` finds A₅ or S₅
-on five states in 12, all with 999 first and a cell of rowspan 6 or 7.
+The 999 has to outlast the table, and HTML caps rowspans at 65534. But in a page with `<!doctype html>`,
+`rowspan="0"` makes a cell grow to the end of its row group, so the first cell can be a 999 that never runs
+out, and then the row is the same for every *n*:
+
+```html
+<td rowspan="0"></td><td rowspan="2"></td><td rowspan="6"></td>
+```
+
+The tables in `barrington.py` use 0 for every cell that never ends. Chromium 158 lays all 32 out as the
+specification does. So does Safari 27.2 on the four AND tables and on the first 150, 300 and 450 rows of
+an XOR one, but its time grows about as the cube of the number of rows (8 s for 150 rows, 53 s for 300, 235 s
+for 450, against 2 to 6 s with 999), and it didn't get through the four full XOR tables in an hour and a
+half. With 65534 in place of 999, Safari is slow in a different way: right on the AND tables, but about 40
+times slower than with 999.
+
+Several outputs fit in one table, one after another. Each formula's cells go after the previous one's reader
+in the first row, and its rows start once the count just right of that reader has drained back to 0, which
+takes 12 rows in which nothing wakes. One table of 3990 repeated rows and 4564 columns gives all four bits of
+the product of two 2-bit numbers: all 16 products are right in the specification's algorithm, and Chromium
+158 places every cell of all 16 tables where the specification does.
+
+Other rows work too: of the 90 rows of 999 and two different rowspans from 2 to 7,
+`python research/barrington.py --search` finds A₅ or S₅ on five states in 12, all with 999 first and a cell
+of rowspan 6 or 7.
 
 ## What I found on the way
 
@@ -285,7 +302,7 @@ python research/product_scan.py 2 3 4   # multipliers for 2, 3 and 4 bits, every
 python research/multiply.py             # the two-bit special case
 python research/fixed_row.py            # parity and inner product mod 2 with one fixed row of 3 cells
 python research/stretch_groups.py       # which permutations of states stretches can make; --search too
-python research/barrington.py           # every formula with the fixed row 999 2 6; --search: other rows
+python research/barrington.py           # every formula, and a 2-bit product, with one fixed row; --search
 python tools/picture.py 11 6 4          # docs/example.png
 ```
 
@@ -302,15 +319,13 @@ Pages.
 
 ## Next
 
-- One row for every width: which functions can a fixed repeated row compute? Majority with two cells, parity
-  and inner product mod 2 with three, and with `999 2 6`, every formula: all of NC¹, so tables of polynomial
-  size with one fixed row multiply numbers of every width after all, as long as the 999 stays above the number
-  of rows. Two things are left. One is `rowspan="0"` for the 999, so that the row really is the same for every
-  width (see above). The other is the ceiling. An output is the end of one position's chain, which in a table
-  of polynomial size has polynomially many states, so a branching program of polynomial size can follow it,
-  row by row and literal by literal: a fixed row computes no more than L/poly. Whether it gets past NC¹ is
-  open. (This item used to guess that a fixed row computes only AC⁰, then that no fixed row multiplies every
-  width.)
+- One row for every width: which functions can a fixed repeated row compute? Majority with two cells,
+  parity and inner product mod 2 with three, and with `0 2 6`, every formula: all of NC¹, so tables of
+  polynomial size with one fixed row multiply numbers of every width after all. What's left is the ceiling.
+  An output is the end of one position's chain, which in a table of polynomial size has polynomially many
+  states, so a branching program of polynomial size can follow it, row by row and literal by literal: a
+  fixed row computes no more than L/poly. Whether it gets past NC¹ is open. (This item used to guess that a
+  fixed row computes only AC⁰, then that no fixed row multiplies every width.)
 - Computing without a bound: in Rule 110, cells exchange results. Here no position ever sees another's;
   each runs its own count over the first row to its left. I expect identical rows can't compute without a
   bound in that sense, but the question needs a precise statement first.
